@@ -51,6 +51,7 @@ Vagrant.configure("2") do |config|
     yum -y install postgresql10
     yum -y install postgresql10-server
     yum -y install postgresql10-devel
+    yum -y install python-devel
     ln -s /usr/pgsql-10/bin/pg_config /usr/bin/pg_config
     yum -y install pgxnclient
     pgxn install multicorn
