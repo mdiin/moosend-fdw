@@ -10,6 +10,17 @@ from logging import ERROR, WARNING
 
 import json
 
+def coerce_column_value(value, column_type):
+    if column_type == "integer":
+        return int(value);
+    if column_type == "text":
+        return str(value);
+    if column_type == "timestamp with time zone":
+        return value;
+    if column_type == "timestamp without time zone":
+        return value;
+    return value;
+
 class MoosendFDW(ForeignDataWrapper):
     """A foreign data wrapper for Moosend
 
@@ -19,6 +30,13 @@ class MoosendFDW(ForeignDataWrapper):
     - list_id (Required)
     - primary_key (Required for updates)
     - page_size (Optional, defaults to 500)
+
+    Column types available are:
+
+    - integer
+    - text
+    - timestamp with time zone
+    - timestamp without time zone
 
     Have fun!"""
 
@@ -62,11 +80,11 @@ class MoosendFDW(ForeignDataWrapper):
 
     def col(self, column, subscriber):
         try:
-            return subscriber[column]
+            return coerce_column_value(subscriber[column], self.columns[column].base_type_name)
         except KeyError:
             for field in subscriber["CustomFields"]:
                 if field["Name"] == column:
-                    return field["Value"]
+                    return coerce_column_value(field["Value"], self.columns[column].base_type_name)
         log_to_postgres("MoosendFDW: " + column + " could not be matched to output from Moosend API.", WARNING)
         return None
 
