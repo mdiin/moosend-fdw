@@ -22,13 +22,17 @@ def coerce_column_value(value, column_type):
     if column_type == "timestamp with time zone":
         timestamp_re = re.compile(r"^/Date\((\d+)([+-])(\d{4})\)/$")
         match = timestamp_re.match(value)
-        (unix_timestamp, tz_mod, tz) = match.groups()
-        return datetime.utcfromtimestamp(int(unix_timestamp) / 1000);
+        if match is not None:
+            (unix_timestamp, tz_mod, tz) = match.groups()
+            return datetime.utcfromtimestamp(int(unix_timestamp) / 1000);
+        return None
     if column_type == "timestamp without time zone":
         timestamp_re = re.compile(r"^/Date\((\d+)([+-])(\d{4})\)/$")
         match = timestamp_re.match(value)
-        (unix_timestamp, tz_mod, tz) = match.groups()
-        return datetime.fromtimestamp(int(unix_timestamp) / 1000);
+        if match is not None:
+            (unix_timestamp, tz_mod, tz) = match.groups()
+            return datetime.fromtimestamp(int(unix_timestamp) / 1000);
+        return None
     return value;
 
 class MoosendFDW(ForeignDataWrapper):
@@ -65,6 +69,17 @@ class MoosendFDW(ForeignDataWrapper):
             log_to_postgres("MoosendFDW: You must supply a mailing list ID in the options.", ERROR)
 
         self.columns = columns
+        self.main_fields = (
+            "ID",
+            "Name",
+            "Email",
+            "CreatedOn",
+            "UnsubscribedOn",
+            "UnsubscribedFromID",
+            "SubscribeType",
+            "SubscribeMethod"
+        )
+        self.custom_fields = [c for c in columns if c not in self.main_fields]
 
     @property
     def rowid_column(self):
@@ -116,9 +131,58 @@ class MoosendFDW(ForeignDataWrapper):
             for subscriber in batch["Subscribers"]:
                 yield {c: self.col(c, subscriber) for c in self.columns}
 
-    #def insert(self, new_values):
+    def insert(self, new_values):
+        return self.update(None, new_values)
 
-    #def update(self, old_values, new_values):
+    def update(self, old_values, new_values):
+        url = self.endpoint_url + 'subscribers/' + self.list_id + '/subscribe.json?' + 'apikey=' + self.api_key
+        raw_params = {
+            "Name": new_values.get("Name"),
+            "Email": new_values.get("Email"),
+            "HasExternalDoubleOptIn": True,
+            "CustomFields": [str(k) + "=" + str(new_values.get(k, None)) for k in self.custom_fields if new_values.get(k, None) is not None]
+        }
+        params = json.dumps(raw_params)
+        log_to_postgres(params)
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        request = Request(url, data=params, headers=headers)
+        response = urlopen(request)
+        result = json.loads(
+            response.read()
+        )
 
-    #def delete(self, old_values):
+        log_to_postgres(result)
+
+        if result["Code"] != 0:
+            log_to_postgres("MoosendFDW: " + result["Error"], ERROR)
+            return None
+
+        return {c: self.col(c, result["Context"]) for c in self.columns}
+
+    def delete(self, old_values):
+        primary_fields = ("Email")
+        url = self.endpoint_url + "subscribers/" + self.list_id + "/remove.json?apikey=" + self.api_key
+        raw_params = {"Email": old_values.get("Email")}
+        params = json.dumps(raw_params)
+        log_to_postgres(params)
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        request = Request(url, data=params, headers=headers)
+        response = urlopen(request)
+        results = json.loads(
+            response.read()
+        )
+
+        log_to_postgres(results)
+
+        if results["Code"] != 0:
+            log_to_postgres("MoosendFDW: " + results["Error"], ERROR)
+            return None
+
+        return None
 
