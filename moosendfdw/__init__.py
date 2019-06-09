@@ -3,16 +3,18 @@ from multicorn.utils import log_to_postgres
 from datetime import datetime
 
 try:
-    from urllib.request import urlopen
+    from urllib2.request import urlopen, Request
 except ImportError:
-    from urllib import urlopen
+    from urllib2 import urlopen, Request
 
-from logging import ERROR, WARNING
+from logging import DEBUG, ERROR, WARNING
 
 import json
 import re
 
 def coerce_column_value(value, column_type):
+    if value is None:
+        return None
     if column_type == "integer":
         return int(value);
     if column_type == "text":
@@ -64,8 +66,12 @@ class MoosendFDW(ForeignDataWrapper):
 
         self.columns = columns
 
+    @property
+    def rowid_column(self):
         if self.primary_key_column_name is not None:
-            self.row_id_column = self.primary_key_column_name
+            return self.primary_key_column_name
+
+        return super.rowid_column
 
     def fetch_page(self, page_num):
         response = urlopen(self.endpoint_url
