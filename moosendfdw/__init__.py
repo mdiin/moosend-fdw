@@ -1,5 +1,6 @@
 from multicorn import ForeignDataWrapper
 from multicorn.utils import log_to_postgres
+from datetime import datetime
 
 try:
     from urllib.request import urlopen
@@ -9,6 +10,7 @@ except ImportError:
 from logging import ERROR, WARNING
 
 import json
+import re
 
 def coerce_column_value(value, column_type):
     if column_type == "integer":
@@ -16,9 +18,15 @@ def coerce_column_value(value, column_type):
     if column_type == "text":
         return str(value);
     if column_type == "timestamp with time zone":
-        return value;
+        timestamp_re = re.compile(r"^/Date\((\d+)([+-])(\d{4})\)/$")
+        match = timestamp_re.match(value)
+        (unix_timestamp, tz_mod, tz) = match.groups()
+        return datetime.utcfromtimestamp(int(unix_timestamp) / 1000);
     if column_type == "timestamp without time zone":
-        return value;
+        timestamp_re = re.compile(r"^/Date\((\d+)([+-])(\d{4})\)/$")
+        match = timestamp_re.match(value)
+        (unix_timestamp, tz_mod, tz) = match.groups()
+        return datetime.fromtimestamp(int(unix_timestamp) / 1000);
     return value;
 
 class MoosendFDW(ForeignDataWrapper):
