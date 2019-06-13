@@ -100,7 +100,7 @@ class MoosendFDW(ForeignDataWrapper):
             response.read()
         )
 
-        log_to_postgres(results)
+        log_to_postgres(results, DEBUG)
         if results["Code"] != 0:
             log_to_postgres("MoosendFDW: " + results["Error"], ERROR)
             return (None, None)
@@ -143,7 +143,7 @@ class MoosendFDW(ForeignDataWrapper):
             "CustomFields": [str(k) + "=" + str(new_values.get(k, None)) for k in self.custom_fields if new_values.get(k, None) is not None]
         }
         params = json.dumps(raw_params)
-        log_to_postgres(params)
+        log_to_postgres(params, DEBUG)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json"
@@ -154,7 +154,7 @@ class MoosendFDW(ForeignDataWrapper):
             response.read()
         )
 
-        log_to_postgres(result)
+        log_to_postgres(result, DEBUG)
 
         if result["Code"] != 0:
             log_to_postgres("MoosendFDW: " + result["Error"], ERROR)
