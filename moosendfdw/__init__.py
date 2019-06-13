@@ -42,7 +42,6 @@ class SubscriberFDW(ForeignDataWrapper):
 
     - api_key (Required)
     - list_id (Required)
-    - primary_key (Required for updates, *must* point to a column that stores the email address of subscribers)
     - page_size (Optional, defaults to 500)
 
     Column types available are:
@@ -59,7 +58,7 @@ class SubscriberFDW(ForeignDataWrapper):
         self.endpoint_url = 'http://api.moosend.com/v3/'
         self.api_key = options.get('api_key', None)
         self.list_id = options.get('list_id', None)
-        self.primary_key_column_name = options.get('primary_key', None)
+        self.primary_key_column_name = 'Email'
         self.page_size = options.get('page_size', 500)
 
         if self.api_key is None:
