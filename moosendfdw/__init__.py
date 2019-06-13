@@ -134,7 +134,7 @@ class MoosendFDW(ForeignDataWrapper):
     def insert(self, new_values):
         return self.update(None, new_values)
 
-    def update(self, old_values, new_values):
+    def update(self, rowid, new_values):
         url = self.endpoint_url + 'subscribers/' + self.list_id + '/subscribe.json?' + 'apikey=' + self.api_key
         raw_params = {
             "Name": new_values.get("Name"),
@@ -162,12 +162,11 @@ class MoosendFDW(ForeignDataWrapper):
 
         return {c: self.col(c, result["Context"]) for c in self.columns}
 
-    def delete(self, old_values):
-        primary_fields = ("Email")
+    def delete(self, rowid):
         url = self.endpoint_url + "subscribers/" + self.list_id + "/remove.json?apikey=" + self.api_key
-        raw_params = {"Email": old_values.get("Email")}
+        raw_params = {"Email": rowid}
         params = json.dumps(raw_params)
-        log_to_postgres(params)
+        log_to_postgres(params, DEBUG)
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json"
@@ -178,11 +177,8 @@ class MoosendFDW(ForeignDataWrapper):
             response.read()
         )
 
-        log_to_postgres(results)
+        log_to_postgres(results, DEBUG)
 
         if results["Code"] != 0:
             log_to_postgres("MoosendFDW: " + results["Error"], ERROR)
-            return None
-
-        return None
 
