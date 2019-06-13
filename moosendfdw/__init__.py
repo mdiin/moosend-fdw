@@ -35,14 +35,14 @@ def coerce_column_value(value, column_type):
         return None
     return value;
 
-class MoosendFDW(ForeignDataWrapper):
-    """A foreign data wrapper for Moosend
+class SubscriberFDW(ForeignDataWrapper):
+    """A foreign data wrapper for the Moosend Subscriber API
 
     The following options are accepted:
 
     - api_key (Required)
     - list_id (Required)
-    - primary_key (Required for updates)
+    - primary_key (Required for updates, *must* point to a column that stores the email address of subscribers)
     - page_size (Optional, defaults to 500)
 
     Column types available are:
@@ -55,7 +55,7 @@ class MoosendFDW(ForeignDataWrapper):
     Have fun!"""
 
     def __init__(self, options, columns):
-        super(MoosendFDW, self).__init__(options, columns)
+        super(SubscriberFDW, self).__init__(options, columns)
         self.endpoint_url = 'http://api.moosend.com/v3/'
         self.api_key = options.get('api_key', None)
         self.list_id = options.get('list_id', None)
